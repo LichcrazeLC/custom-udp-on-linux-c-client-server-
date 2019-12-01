@@ -11,10 +11,10 @@ using namespace std;
 
 int main()
 {
-   cout << "Execution Started!" << endl;
+   cout << "Server Started!" << endl;
 
    //Create Socket
-   int listening = socket(AF_INET, SOCK_DGRAM, 0);
+   int listening = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
    if (listening == -1)
    {
       cerr << "Socket creation failed!" << endl;
@@ -23,7 +23,7 @@ int main()
 
    //Bind Socket to IP / Port
    sockaddr_in hint;
-   memset(&hint, 0, sizeof(hint)); 
+   memset(&hint, 0, sizeof(hint));
    hint.sin_family = AF_INET;
    hint.sin_port = htons(8083);
    inet_pton(AF_INET, "0.0.0.0", &hint.sin_addr);
@@ -36,32 +36,35 @@ int main()
 
    //Declare client socket address
    sockaddr_in client;
-   memset(&client, 0, sizeof(client)); 
+   memset(&client, 0, sizeof(client));
    socklen_t clientSize = sizeof(client);
 
-   //Display messages received while listening
+   //Buffer for receiving
    char buf[4096];
-
-   // Clear the buffer
    memset(buf, 0, 4096);
 
-   // Wait for a message
-   int bytesReceived = recvfrom(listening, buf, 4096, MSG_WAITALL, (struct sockaddr *) &client, &clientSize);
-   if (bytesReceived == -1)
+   while (true)
    {
-      cerr << "Connection failed!" << endl;
+      // Wait for a message
+      int bytesReceived = recvfrom(listening, buf, 4096, 0, (struct sockaddr *)&client, &clientSize);
+      if (bytesReceived == -1)
+      {
+         cerr << "Connection failed!" << endl;
+      }
+
+      if (bytesReceived == 0)
+      {
+         cout << "Nothing received!" << endl;
+      }
+      
+      //Display message received while listening
+      cout << "Received: " << string(buf, 0, bytesReceived) << endl;
+
+      // Resend message
+      sendto(listening, buf, 4096, 0, (struct sockaddr *)&client, clientSize);
+
+      memset(buf, 0, 4096);
    }
-
-   if (bytesReceived == 0)
-   {
-      cout << "Nothing received!" << endl;
-   }
-
-   // Display message
-   cout << "Received: " << string(buf, 0, bytesReceived) << endl;
-
-   // Resend message
-   sendto(listening, buf, 4096, MSG_CONFIRM, (struct sockaddr *) &client, clientSize);
 
    return 0;
 }
